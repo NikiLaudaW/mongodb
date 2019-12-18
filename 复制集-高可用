@@ -1,0 +1,57 @@
+复制集	高可用
+数据分发
+读写分离
+异地容灾
+
+复制集 3个以上具有投票的节点组成
+
+修改操作时主节点会记录在oplog表.从节点通过在主节点上打开一个tailable游标不断获取新进入主节点的
+oplog,并在自己的数据上回放。以保持数据一致
+
+选举 raft 一致性算法
+最多50个节点，可参与投票的节点最多7个
+
+影响选举的因素
+	集群必须有大多数节点存活
+	被选举的节点需要
+		能够与多数节点建立连接
+		有较新的oplog
+		有较高的优先级(需配置)
+
+
+创建数据目录
+	mkdir -p /data/dd{1,2,3}
+
+配置
+	systemLog:
+	  destination: file
+	  path: /Users/niki/SoftWare/mongodb-macos-x86_64-4.2.0/data/db2/mongod.log
+	  logAppend: true
+	storage:
+	  dbPath: /Users/niki/SoftWare/mongodb-macos-x86_64-4.2.0/data/db2
+	net:
+	  bindIp: 0.0.0.0
+	  port: 28018
+	replication:
+	  replSetName: rs0
+	processManagement:
+	  fork: true
+
+启动
+	mongod -f db1/mongod.conf
+
+进程状态
+ps -ef|grep mongod
+
+配置复制集
+
+1.需要保证hostname -f 有值
+mongo localhost:28017 进入节点1
+rs.initiate()
+回车
+rs.status()查看状态
+rs.add("MacBook-Pro-83.local:28018")
+
+rs.slaveOk() 允许从节点读
+insert
+find
