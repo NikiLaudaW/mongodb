@@ -1,0 +1,34 @@
+事务开发
+
+writeConcern 决定一个写操作要落到多少个节点上才算成功，取值包括
+0：发起写操作，不关心是否成功
+1-集群最大数据节点数：写操作需要被复制到指定节点数才算成功
+majority:写操作需要被复制到大多数节点上才算成功
+发起写操作的程序将阻塞到写操作达到指定的节点数为止
+
+默认行为
+3节点复制集
+x=1 写入primary内存就认为成功，复制集后台自行同步
+宕机防丢失 w:"majority"
+
+journal 定义如何才算成功，取值包括
+	true 写操作落到journal文件中才算成功
+	false 写操作达到内存就算成功
+
+通常设置majority,写入等待延迟时间最短的选择
+不要设置为总结点数，一旦有一个节点故障，所有写操作都会失败
+增加写操作的延迟时间，并不会显著增加集群压力。无论是否等待，写操作最终都会复制到所有节点上
+应对重要的节点应用{w:"majority"} 普通数据应用{w:1}以确保最佳性能
+
+在复制集测试writeConcern参数
+db.test.insert({count:1},{writeConcern:{w:"majority"}})
+db.test.insert({count:1},{writeConcern:{w:3}})
+db.test.insert({count:1},{writeConcern:{w:4}}) 数量不足报错
+配置延迟节点，模拟网络延迟 复制延迟
+conf=rs.conf()
+conf.members[2].slaveDelay=5 延迟5秒
+conf.members[2].priority=0 不参与投票
+rs.reconfig(conf)
+观察复制延迟下的写入，以及timeout参数
+db.test.insert({count:1},{writeConcern:{w:3}})
+db.test.insert({count:1},{writeConcern:{w:3, timeout:3000}})
