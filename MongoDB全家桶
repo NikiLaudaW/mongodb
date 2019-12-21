@@ -1,0 +1,24 @@
+MongoDB全家桶
+
+	Mongodump/mongorestore
+	全库dump:不加条件
+	根据条件dump部分数据:-q 参数
+	Dump 的同时跟踪数据变更：--oplogs 可以恢复到最新的版本
+
+	mongodump -h 127.0.0.1:27017 -d test -c test   -d 数据库  -c 集合
+	mongorestore -h 127.0.0.1:27017 -d test -c test xxx.bson
+
+
+	Atlas-MongoDB 公有云托管服务-海外专用
+	Stitch 无服务器平台服务 部署简单的lambda。就可以提供服务
+
+	MongoDB BI connector
+
+	MongoDB ops manager 集群管理平台
+		自动化管理：补丁、升级、在线扩容
+		监控及报警
+		持续备份及任意时间点回复
+		kubernetes集成
+
+	MongoDB charts
+		拖拉拽创建图表
