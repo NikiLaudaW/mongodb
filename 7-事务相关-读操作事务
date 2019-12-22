@@ -1,0 +1,37 @@
+事务相关-读操作事务
+
+读取数据关注点
+1.从哪里读，关注数据节点位置
+2.什么样的数据可以读，数据的隔离性
+
+1由readPreference解决
+2由readConcern解决
+
+1 readPreference决定使用哪一个节点来满足正在发起的读请求，可选值
+primary:只选主节点 默认
+primaryPreferred 优先主节点，如不可用则从节点
+secondary:只选从节点
+secondaryPreferred 优先从节点，从节点不可用则选主节点
+nearest:选择最近的节点，通过ping的时间决定 多数据中心场景使用
+
+readPreference只能控制使用一类节点。Tag则可以将节点选择控制到一个或几个节点
+场景
+一个5个节点的复制集
+3个节点硬件比较好，专用于服务线上客户
+2个节点硬件比较差，专用于生成报表
+
+可使用Tage来达到这样的目的
+3个好的节点{purpose:"online"}在线应用读取此类节点
+2个差的节点{purpose:"analyse"}报表读取此类节点
+
+readPreference配置
+通过连接串参数
+mongodb://host1:27017,host2:27018,host3:27019/?replicaSet=rs&readPreference=secondary
+通过MongoDB驱动程序API
+MongoCollection.withReadPreference(readPreference readPref)
+Mongo Shell
+db.collection.find({}).readPref("secondary")
+
+db.fsyncLock() 此节点不同步数据，模拟网络延迟
+db.fsyncUnlock() 解锁，可以同步数据
+指定readPreference时需要注意高可用问题。
