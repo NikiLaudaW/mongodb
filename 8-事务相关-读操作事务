@@ -1,0 +1,58 @@
+readConcern 决定这个节点上的数据那些是可读的，类似关系数据库的隔离级别，可选值包括:
+available:读取所有可用的数据
+local:读取所有可用且属于当前分片的数据	->默认
+majority:读取在大多数节点上提交完成的数据，不会导致回滚 关注读的隔离性
+linearizable:可线性化读取文档
+snapshot:读取最近快照中的数据
+
+复制集中local和available无区别。两者区别体现在分片集上。
+数据X从shard1向shard2迁移，迁移过程中部分数据会在两边同时存在，但shard1仍是数据X的负责方
+
+所有对X的读写操作仍进入shard1
+config中记录的信息X仍然属于shard1
+
+此时读shard2,则会体现出local和available的区别
+local 只读取由shard2负责的数据，不包括X
+available shard2上有什么就读什么 包括X
+
+不建议使用available,无关紧要的场景
+
+majority
+节点上维护多个X版本 MVCC机制
+MongoDB通过维护多个快照来连接不同的版本
+	每个被大多数节点确认过的版本都将是一个快照
+	快照持续到没有人使用为止才被删除
+
+实验
+	db.fsyncLock()锁住写入，模拟延迟
+	配置文件内replication.enableMajorityReadConcern: true 需要记录所有写操作的位置和最近的状态，有额外开销
+
+	db.test.save({"A": 1})
+	db.test.find().readConcern("local")
+	db.test.find().readConcern("majority")
+	在某一从节点上执行db.fsyncUnlock()
+
+	使用local参数，则可以直接查询到写入数据
+	使用majority，只能查询到已经被大多数节点确认过的数据
+	update和remove与上同理
+
+MongoDB写操作达到大多数节点之前都是不安全的，一旦主节点崩溃，从节点还没有复制，刚才的写操作就丢失了
+一次写操作视作一个事务，可认为被回滚了
+分布式系统中，事务的提交需要多个节点级别的提交
+majority  可以有效避免脏读 等同于 Read Committed
+
+安全的读写分离
+db.orders.insert({...,{writeConcern:{w:"majority"}}})
+db.orders.find({oid:101}).readPref("secondary").readConcern("majority")
+
+linearizable
+保证绝对的操作线性顺序
+主节点网络问题，重新选举主节点情况
+在写操作自然时间后面发生的读，一定可以读到之前的写
+	只对读取单个文档时有效
+	可能导致非常慢的读，建议配合maxTimeMS
+
+
+snapshot 只在多文档事务中生效，可保证不出现脏读、不可重复读、幻读。
+所有的读都将使用同一个快照，知道事务提交为止该快照才被释放
+
